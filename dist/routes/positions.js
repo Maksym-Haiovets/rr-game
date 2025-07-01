@@ -1,44 +1,68 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.createPositionsRouter = createPositionsRouter;
+exports.positionsRouter = void 0;
 const express_1 = require("express");
-const asyncHandler_1 = require("../middleware/asyncHandler");
-const ApiError_1 = require("../utils/ApiError");
-function createPositionsRouter(database) {
-    const router = (0, express_1.Router)();
-    // Get all positions
-    router.get('/', (0, asyncHandler_1.asyncHandler)(async (req, res) => {
-        const positions = await database.getAllPositions();
-        res.json({
-            success: true,
-            data: positions
-        });
-    }));
-    // Update single position
-    router.put('/:id', (0, asyncHandler_1.asyncHandler)(async (req, res) => {
-        const { id } = req.params;
-        const { result } = req.body;
-        const positionId = parseInt(id);
-        if (isNaN(positionId) || positionId < 1 || positionId > 15) {
-            throw new ApiError_1.ApiError(400, 'Invalid position ID. Must be between 1 and 15');
+const app_1 = require("../app");
+exports.positionsRouter = (0, express_1.Router)();
+// Отримати всі позиції
+exports.positionsRouter.get('/', (req, res) => {
+    app_1.db.all('SELECT * FROM positions ORDER BY id', (err, rows) => {
+        if (err) {
+            console.error('❌ Помилка отримання позицій:', err);
+            return res.status(500).json({
+                success: false,
+                error: 'Помилка отримання позицій'
+            });
         }
-        if (!['none', 'take', 'stop'].includes(result)) {
-            throw new ApiError_1.ApiError(400, 'Invalid result. Must be none, take, or stop');
+        res.json({
+            success: true,
+            data: rows
+        });
+    });
+});
+// Оновити позицію
+exports.positionsRouter.put('/:id', (req, res) => {
+    const id = parseInt(req.params.id);
+    const { result } = req.body;
+    if (!['none', 'take', 'stop'].includes(result)) {
+        return res.status(400).json({
+            success: false,
+            error: 'Некоректне значення result'
+        });
+    }
+    if (id < 1 || id > 15) {
+        return res.status(400).json({
+            success: false,
+            error: 'ID позиції має бути від 1 до 15'
+        });
+    }
+    app_1.db.run('UPDATE positions SET result = ? WHERE id = ?', [result, id], function (err) {
+        if (err) {
+            console.error('❌ Помилка оновлення позиції:', err);
+            return res.status(500).json({
+                success: false,
+                error: 'Помилка оновлення позиції'
+            });
         }
-        await database.updatePosition(positionId, result);
         res.json({
             success: true,
-            message: `Position ${positionId} updated to ${result}`
+            data: { id, result }
         });
-    }));
-    // Reset all positions
-    router.post('/reset', (0, asyncHandler_1.asyncHandler)(async (req, res) => {
-        await database.resetAllPositions();
+    });
+});
+// Скинути всі позиції
+exports.positionsRouter.post('/reset', (req, res) => {
+    app_1.db.run('UPDATE positions SET result = ?', ['none'], (err) => {
+        if (err) {
+            console.error('❌ Помилка скидання позицій:', err);
+            return res.status(500).json({
+                success: false,
+                error: 'Помилка скидання позицій'
+            });
+        }
         res.json({
             success: true,
-            message: 'All positions reset to none'
+            data: { message: 'Всі позиції скинуті' }
         });
-    }));
-    return router;
-}
-//# sourceMappingURL=positions.js.map
+    });
+});

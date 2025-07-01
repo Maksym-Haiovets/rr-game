@@ -1,273 +1,295 @@
-import { Position, UserSettings, ApiResponse, ProfitCalculation } from '../../src/types/shared';
+import { Position, UserSettings, Achievement, GameState } from './types';
+import { get, put, post } from './utils/api';
+import { showToast } from './utils/toast';
+import { updateGradeDisplay } from './modules/profitGrades';
+import { initAchievements, checkAchievements, incrementClicks, updateAchievementsDisplay } from './modules/achievements';
+import { tutorialManager } from './modules/tutorial';
 
-class TradingRiskGame {
-  private positions: Position[] = [];
-  private settings: UserSettings = {
-    risk_per_position: 1,
-    reward_ratio: 2,
-    tutorial_completed: false,
-    tutorial_skipped_forever: false
+class RiskManagementGame {
+  private gameState: GameState = {
+    positions: [],
+    settings: {
+      id: 1,
+      risk_per_position: 1.0,
+      reward_ratio: 2.0,
+      tutorial_completed: false,
+      tutorial_skipped_forever: false
+    },
+    achievements: [],
+    stats: {
+      takes: 0,
+      stops: 0,
+      profit: 0,
+      winRate: 0
+    }
   };
 
-  private gridElement!: HTMLElement;
-  private statsElement!: HTMLElement;
-  private settingsElement!: HTMLElement;
-  private messageElement!: HTMLElement;
-
-  constructor() {
-    this.init();
-  }
-
-  private async init(): Promise<void> {
+  async init() {
     try {
-      await this.loadData();
-      this.initializeDOM();
-      this.renderGrid();
-      this.updateStats();
+      await this.loadGameState();
+      this.setupUI();
       this.checkTutorial();
+
+      console.log('✅ Гра ініціалізована успішно');
     } catch (error) {
-      console.error('Failed to initialize game:', error);
-      this.showError('Failed to load game data');
+      console.error('❌ Помилка ініціалізації гри:', error);
+      showToast('Помилка завантаження гри', 'error');
     }
   }
 
-  private async loadData(): Promise<void> {
+  private async loadGameState() {
     try {
-      const [positionsResponse, settingsResponse] = await Promise.all([
-        fetch('/api/positions'),
-        fetch('/api/settings')
-      ]) as any;
+      // Завантажуємо дані паралельно
+      const [positions, settings, achievements] = await Promise.all([
+        get<Position[]>('/api/positions'),
+        get<UserSettings>('/api/settings'),
+        get<Achievement[]>('/api/achievements')
+      ]);
 
-      if (!positionsResponse.ok || !settingsResponse.ok) {
-        throw new Error('Failed to fetch data');
-      }
+      this.gameState.positions = positions;
+      this.gameState.settings = settings;
+      this.gameState.achievements = achievements;
 
-      const positionsData: ApiResponse<Position[]> = await positionsResponse.json();
-      const settingsData: ApiResponse<UserSettings> = await settingsResponse.json();
+      this.calculateStats();
+      initAchievements(achievements);
 
-      if (positionsData.success && positionsData.data) {
-        this.positions = positionsData.data;
-      }
-
-      if (settingsData.success && settingsData.data) {
-        this.settings = settingsData.data;
-      }
     } catch (error) {
-      console.error('Error loading data:', error);
+      console.error('Помилка завантаження стану гри:', error);
       throw error;
     }
   }
 
-  private initializeDOM(): void {
-    this.gridElement = document.getElementById('positions-grid')!;
-    this.statsElement = document.getElementById('stats')!;
-    this.settingsElement = document.getElementById('settings')!;
-    this.messageElement = document.getElementById('motivational-message')!;
-
-    // Setup event listeners
-    document.getElementById('reset-positions')?.addEventListener('click', () => {
-      this.resetAllPositions();
-    });
-
-    document.getElementById('save-settings')?.addEventListener('click', () => {
-      this.saveSettings();
-    });
-
-    document.getElementById('show-tutorial')?.addEventListener('click', () => {
-      this.startTutorial();
-    });
+  private setupUI() {
+    this.createPositionsGrid();
+    this.updateStatsDisplay();
+    this.updateSettingsUI();
+    this.setupEventListeners();
+    updateAchievementsDisplay();
   }
 
-  private renderGrid(): void {
-    this.gridElement.innerHTML = '';
+  private createPositionsGrid() {
+    const grid = document.getElementById('positions-grid')!;
+    grid.innerHTML = '';
 
-    this.positions.forEach(position => {
+    this.gameState.positions.forEach(position => {
       const card = document.createElement('div');
       card.className = `position-card ${position.result}`;
       card.textContent = position.id.toString();
+      card.dataset.id = position.id.toString();
 
-      card.addEventListener('click', () => {
-        this.togglePosition(position.id);
-      });
+      card.addEventListener('click', () => this.handlePositionClick(position.id));
 
-      this.gridElement.appendChild(card);
+      grid.appendChild(card);
     });
   }
 
-  private async togglePosition(id: number): Promise<void> {
-    const position = this.positions.find(p => p.id === id);
-    if (!position) return;
-
-    const states = ['none', 'take', 'stop'] as const;
-    const currentIndex = states.indexOf(position.result);
-    const nextState = states[(currentIndex + 1) % states.length];
-
+  private async handlePositionClick(positionId: number) {
     try {
-      const response = await fetch(`/api/positions/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ result: nextState })
-      });
+      const position = this.gameState.positions.find(p => p.id === positionId);
+      if (!position) return;
 
-      if (response.ok) {
-        position.result = nextState;
-        this.renderGrid();
-        this.updateStats();
-      }
+      // Циклічне перемикання станів
+      const states: Array<'none' | 'take' | 'stop'> = ['none', 'take', 'stop'];
+      const currentIndex = states.indexOf(position.result);
+      const nextState = states[(currentIndex + 1) % states.length];
+
+      // Оновлюємо на сервері
+      await put(`/api/positions/${positionId}`, { result: nextState });
+
+      // Оновлюємо локальний стан
+      position.result = nextState;
+
+      // Оновлюємо UI
+      const card = document.querySelector(`[data-id="${positionId}"]`)!;
+      card.className = `position-card ${nextState}`;
+
+      // Перераховуємо статистику
+      this.calculateStats();
+      this.updateStatsDisplay();
+
+      // Перевіряємо досягнення
+      incrementClicks();
+      await checkAchievements(this.gameState.stats);
+
     } catch (error) {
-      console.error('Error updating position:', error);
-      this.showError('Failed to update position');
+      console.error('Помилка оновлення позиції:', error);
+      showToast('Помилка оновлення позиції', 'error');
     }
   }
 
-  private updateStats(): void {
-    const calculation = this.calculateProfit();
-
-    this.statsElement.innerHTML = `
-      <div class="stat-item">
-        <span class="stat-label">Тейки:</span>
-        <span class="stat-value take">${calculation.takes}</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-label">Стопи:</span>
-        <span class="stat-value stop">${calculation.stops}</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-label">Прибуток:</span>
-        <span class="stat-value" style="color: ${calculation.color}">${calculation.totalProfit}%</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-label">Win-rate:</span>
-        <span class="stat-value">${calculation.winRate}%</span>
-      </div>
-    `;
-
-    this.updateMotivationalMessage(calculation);
-  }
-
-  private calculateProfit(): ProfitCalculation {
-    const takes = this.positions.filter(p => p.result === 'take').length;
-    const stops = this.positions.filter(p => p.result === 'stop').length;
-
-    const totalProfit = (takes * this.settings.reward_ratio) + (stops * -this.settings.risk_per_position);
+  private calculateStats() {
+    const takes = this.gameState.positions.filter(p => p.result === 'take').length;
+    const stops = this.gameState.positions.filter(p => p.result === 'stop').length;
     const totalPositions = takes + stops;
-    const winRate = totalPositions > 0 ? Math.round((takes / totalPositions) * 100) : 0;
 
-    let profitLevel = 'break-even';
-    let color = '#ff9500';
+    // Розрахунок прибутку: тейки дають +RR%, стопи дають -1%
+    const profit = (takes * this.gameState.settings.reward_ratio) + (stops * -1);
+    const winRate = totalPositions > 0 ? (takes / totalPositions) * 100 : 0;
 
-    if (totalProfit > 0) {
-      if (totalProfit >= 12) {
-        profitLevel = 'champion';
-        color = '#00ff00';
-      } else if (totalProfit >= 9) {
-        profitLevel = 'excellent';
-        color = '#32cd32';
-      } else if (totalProfit >= 6) {
-        profitLevel = 'great';
-        color = '#90ee90';
-      } else {
-        profitLevel = 'good';
-        color = '#98fb98';
-      }
-    } else if (totalProfit < 0) {
-      profitLevel = 'loss';
-      color = '#ff4444';
-    }
-
-    return {
+    this.gameState.stats = {
       takes,
       stops,
-      totalProfit: Math.round(totalProfit * 100) / 100,
-      winRate,
-      profitLevel,
-      color
+      profit: parseFloat(profit.toFixed(1)),
+      winRate: parseFloat(winRate.toFixed(1))
     };
   }
 
-  private updateMotivationalMessage(calculation: ProfitCalculation): void {
-    const messages = {
-      'champion': '🏆 Чемпіонський результат! Ви володієте ризик-менеджментом!',
-      'excellent': '⭐ Відмінно! Ваша дисципліна приносить плоди!',
-      'great': '👍 Чудово! Продовжуйте дотримуватися стратегії!',
-      'good': '📈 Добре! Ви на правильному шляху!',
-      'break-even': '⚖️ Беззбитковість - це теж успіх! Стопи захищають капітал!',
-      'loss': '💪 Не здавайтесь! Стопи - це інвестиція в майбутню прибутковість!'
-    };
+  private updateStatsDisplay() {
+    document.getElementById('takes-count')!.textContent = this.gameState.stats.takes.toString();
+    document.getElementById('stops-count')!.textContent = this.gameState.stats.stops.toString();
+    document.getElementById('profit-pct')!.textContent = `${this.gameState.stats.profit}%`;
+    document.getElementById('win-rate')!.textContent = `${this.gameState.stats.winRate}%`;
 
-    this.messageElement.textContent = messages[calculation.profitLevel || 'break-even'] as string
-    this.messageElement.style.color = calculation.color as string;
+    // Оновлюємо градації прибутку
+    updateGradeDisplay(
+      this.gameState.stats.takes,
+      this.gameState.stats.stops,
+      this.gameState.stats.profit
+    );
+
+    // Оновлюємо мотиваційне повідомлення
+    this.updateMotivationMessage();
   }
 
-  private async resetAllPositions(): Promise<void> {
-    try {
-      const response = await fetch('/api/positions/reset', { method: 'POST' });
+  private updateMotivationMessage() {
+    const msgEl = document.getElementById('motivation-msg')!;
+    const { takes, stops, profit } = this.gameState.stats;
 
-      if (response.ok) {
-        this.positions.forEach(p => p.result = 'none');
-        this.renderGrid();
-        this.updateStats();
-      }
-    } catch (error) {
-      console.error('Error resetting positions:', error);
-      this.showError('Failed to reset positions');
+    if (takes === 0 && stops === 0) {
+      msgEl.textContent = 'Почніть торгувати, щоб побачити результати!';
+    } else if (profit === 0 && takes === 5 && stops === 10) {
+      msgEl.textContent = '⚖️ Ідеальна беззбитковість! Тепер спробуйте досягти прибутку.';
+    } else if (profit > 0) {
+      msgEl.textContent = `💰 Чудово! Ви в прибутку ${profit}%. Продовжуйте у тому ж дусі!`;
+    } else if (profit < 0) {
+      msgEl.textContent = '📉 Не переживайте через стопи - вони частина стратегії. Трейдинг - це довгострокова гра!';
+    } else {
+      msgEl.textContent = 'Продовжуйте торгувати, щоб побачити свій прогрес!';
     }
   }
 
-  private async saveSettings(): Promise<void> {
-    const riskInput = document.getElementById('risk-input') as HTMLInputElement;
-    const ratioInput = document.getElementById('ratio-input') as HTMLInputElement;
+  private updateSettingsUI() {
+    (document.getElementById('risk-input') as HTMLInputElement).value = 
+      this.gameState.settings.risk_per_position.toString();
+    (document.getElementById('reward-input') as HTMLInputElement).value = 
+      this.gameState.settings.reward_ratio.toString();
+  }
 
-    const newSettings = {
-      risk_per_position: parseFloat(riskInput.value) || this.settings.risk_per_position,
-      reward_ratio: parseFloat(ratioInput.value) || this.settings.reward_ratio
-    };
+  private setupEventListeners() {
+    // Збереження налаштувань
+    document.getElementById('save-settings')!.addEventListener('click', async () => {
+      await this.saveSettings();
+    });
 
+    // Скидання позицій
+    document.getElementById('reset-positions')!.addEventListener('click', async () => {
+      await this.resetPositions();
+    });
+
+    // Показати гайд
+    document.getElementById('show-guide-btn')!.addEventListener('click', () => {
+      tutorialManager.start();
+    });
+
+    // Модальне вікно туторіалу
+    document.getElementById('start-tutorial')!.addEventListener('click', () => {
+      this.hideTutorialModal();
+      tutorialManager.start();
+    });
+
+    document.getElementById('skip-tutorial')!.addEventListener('click', () => {
+      this.hideTutorialModal();
+    });
+
+    document.getElementById('skip-forever')!.addEventListener('click', async () => {
+      try {
+        await put('/api/settings', { tutorial_skipped_forever: true });
+        this.gameState.settings.tutorial_skipped_forever = true;
+        this.hideTutorialModal();
+        showToast('Туторіал відключено назавжди', 'success');
+      } catch (error) {
+        console.error('Помилка збереження налаштувань туторіалу:', error);
+      }
+    });
+  }
+
+  private async saveSettings() {
     try {
-      const response = await fetch('/api/settings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newSettings)
+      const riskInput = document.getElementById('risk-input') as HTMLInputElement;
+      const rewardInput = document.getElementById('reward-input') as HTMLInputElement;
+
+      const risk = parseFloat(riskInput.value);
+      const reward = parseFloat(rewardInput.value);
+
+      if (risk < 0.1 || risk > 10) {
+        showToast('Ризик має бути від 0.1% до 10%', 'error');
+        return;
+      }
+
+      if (reward < 1 || reward > 5) {
+        showToast('Співвідношення прибутку має бути від 1 до 5', 'error');
+        return;
+      }
+
+      await put('/api/settings', {
+        risk_per_position: risk,
+        reward_ratio: reward
       });
 
-      if (response.ok) {
-        this.settings = { ...this.settings, ...newSettings };
-        this.updateStats();
-        this.showSuccess('Налаштування збережено!');
-      }
+      this.gameState.settings.risk_per_position = risk;
+      this.gameState.settings.reward_ratio = reward;
+
+      // Перераховуємо статистику з новими налаштуваннями
+      this.calculateStats();
+      this.updateStatsDisplay();
+
+      showToast('Налаштування збережено!', 'success');
+
     } catch (error) {
-      console.error('Error saving settings:', error);
-      this.showError('Failed to save settings');
+      console.error('Помилка збереження налаштувань:', error);
+      showToast('Помилка збереження налаштувань', 'error');
     }
   }
 
-  private checkTutorial(): void {
-    if (!this.settings.tutorial_completed && !this.settings.tutorial_skipped_forever) {
+  private async resetPositions() {
+    try {
+      await post('/api/positions/reset', {});
+
+      // Оновлюємо локальний стан
+      this.gameState.positions.forEach(p => p.result = 'none');
+
+      this.createPositionsGrid();
+      this.calculateStats();
+      this.updateStatsDisplay();
+
+      showToast('Всі позиції скинуті!', 'success');
+
+    } catch (error) {
+      console.error('Помилка скидання позицій:', error);
+      showToast('Помилка скидання позицій', 'error');
+    }
+  }
+
+  private checkTutorial() {
+    if (!this.gameState.settings.tutorial_completed && 
+        !this.gameState.settings.tutorial_skipped_forever) {
       this.showTutorialModal();
     }
   }
 
-  private showTutorialModal(): void {
-    // Implementation for tutorial modal
-    // This would show the tutorial introduction modal
+  private showTutorialModal() {
+    const modal = document.getElementById('tutorial-modal')!;
+    modal.classList.add('show');
   }
 
-  private startTutorial(): void {
-    // Implementation for guided tutorial
-  }
-
-  private showError(message: string): void {
-    // Show error message to user
-    console.error(message);
-  }
-
-  private showSuccess(message: string): void {
-    // Show success message to user
-    console.log(message);
+  private hideTutorialModal() {
+    const modal = document.getElementById('tutorial-modal')!;
+    modal.classList.remove('show');
   }
 }
 
-// Initialize the game when DOM is loaded
+// Ініціалізація гри після завантаження DOM
 document.addEventListener('DOMContentLoaded', () => {
-  new TradingRiskGame();
+  const game = new RiskManagementGame();
+  game.init();
 });

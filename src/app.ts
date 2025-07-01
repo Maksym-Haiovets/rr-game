@@ -1,85 +1,71 @@
 import express from 'express';
-import cors from 'cors';
 import path from 'path';
-import { getDatabase, Database } from './database/init';
-import { errorHandler } from './middleware/errorHandler';
-import { createPositionsRouter } from './routes/positions';
-import { createSettingsRouter } from './routes/settings';
+import { Database } from 'sqlite3';
+import { initDatabase } from './database/init';
+import { positionsRouter } from './routes/positions';
+import { settingsRouter } from './routes/settings';
+import { achievementsRouter } from './routes/achievements';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
-app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
 
-// Global database instance
-let database: Database;
+// Глобальна змінна для бази даних
+export let db: Database;
 
-// Initialize application
-async function initializeApp(): Promise<void> {
+async function startServer() {
   try {
-    console.log('🚀 Initializing application...');
+    console.log('🔧 Ініціалізація бази даних...');
+    db = await initDatabase();
+    console.log('✅ База даних готова');
 
-    // Initialize database first
-    database = await getDatabase();
-    console.log('✅ Database initialized successfully');
+    // Маршрути API
+    app.use('/api/positions', positionsRouter);
+    app.use('/api/settings', settingsRouter);
+    app.use('/api/achievements', achievementsRouter);
 
-    // Setup routes with database instance
-    app.use('/api/positions', createPositionsRouter(database));
-    app.use('/api/settings', createSettingsRouter(database));
+    // Обробка помилок
+    app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+      console.error('❌ Помилка сервера:', err);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Внутрішня помилка сервера' 
+      });
+    });
 
-    // Error handling middleware (should be last)
-    app.use(errorHandler);
-
-    console.log('✅ Routes configured');
-
-  } catch (error) {
-    console.error('❌ Failed to initialize application:', error);
-    process.exit(1);
-  }
-}
-
-// Start server only after initialization
-async function startServer(): Promise<void> {
-  try {
-    await initializeApp();
-
-    const server = app.listen(PORT, () => {
+    // Запуск сервера
+    app.listen(PORT, () => {
       console.log(`🚀 Сервер запущено на http://localhost:${PORT}`);
       console.log(`📊 API доступне на http://localhost:${PORT}/api`);
     });
 
     // Graceful shutdown
-    const gracefulShutdown = async (signal: string) => {
-      console.log(`\n📥 Received ${signal}. Shutting down gracefully...`);
-
-      server.close(() => {
-        console.log('🔒 HTTP server closed');
-      });
-
-      if (database) {
-        await database.close();
+    const gracefulShutdown = () => {
+      console.log('\n🔄 Зупинка сервера...');
+      if (db) {
+        db.close((err) => {
+          if (err) {
+            console.error('❌ Помилка при закритті БД:', err);
+          } else {
+            console.log('✅ База даних закрита');
+          }
+          process.exit(0);
+        });
+      } else {
+        process.exit(0);
       }
-
-      console.log('✅ Graceful shutdown completed');
-      process.exit(0);
     };
 
-    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+    process.on('SIGINT', gracefulShutdown);
+    process.on('SIGTERM', gracefulShutdown);
 
   } catch (error) {
-    console.error('❌ Failed to start server:', error);
+    console.error('💥 Критична помилка запуску:', error);
     process.exit(1);
   }
 }
 
-// Start the application
-startServer().catch((error) => {
-  console.error('❌ Unhandled error during startup:', error);
-  process.exit(1);
-});
-
-export default app;
+startServer();

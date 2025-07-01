@@ -1,51 +1,80 @@
 import { Router } from 'express';
-import { Database } from '../database/init';
-import { asyncHandler } from '../middleware/asyncHandler';
-import { ApiError } from '../utils/ApiError';
+import { db } from '../app';
+import { Position, ApiResponse } from '../types/shared';
 
-export function createPositionsRouter(database: Database): Router {
-  const router = Router();
+export const positionsRouter = Router();
 
-  // Get all positions
-  router.get('/', asyncHandler(async (req, res) => {
-    const positions = await database.getAllPositions();
-    res.json({
-      success: true,
-      data: positions
-    });
-  }));
-
-  // Update single position
-  router.put('/:id', asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    const { result } = req.body;
-
-    const positionId = parseInt(id);
-    if (isNaN(positionId) || positionId < 1 || positionId > 15) {
-      throw new ApiError(400, 'Invalid position ID. Must be between 1 and 15');
+// Отримати всі позиції
+positionsRouter.get('/', (req, res) => {
+  db.all('SELECT * FROM positions ORDER BY id', (err, rows: Position[]) => {
+    if (err) {
+      console.error('❌ Помилка отримання позицій:', err);
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Помилка отримання позицій' 
+      } as ApiResponse);
     }
 
-    if (!['none', 'take', 'stop'].includes(result)) {
-      throw new ApiError(400, 'Invalid result. Must be none, take, or stop');
+    res.json({ 
+      success: true, 
+      data: rows 
+    } as ApiResponse<Position[]>);
+  });
+});
+
+// Оновити позицію
+positionsRouter.put('/:id', (req, res) => {
+  const id = parseInt(req.params.id);
+  const { result } = req.body;
+
+  if (!['none', 'take', 'stop'].includes(result)) {
+    return res.status(400).json({ 
+      success: false, 
+      error: 'Некоректне значення result' 
+    } as ApiResponse);
+  }
+
+  if (id < 1 || id > 15) {
+    return res.status(400).json({ 
+      success: false, 
+      error: 'ID позиції має бути від 1 до 15' 
+    } as ApiResponse);
+  }
+
+  db.run(
+    'UPDATE positions SET result = ? WHERE id = ?',
+    [result, id],
+    function(err) {
+      if (err) {
+        console.error('❌ Помилка оновлення позиції:', err);
+        return res.status(500).json({ 
+          success: false, 
+          error: 'Помилка оновлення позиції' 
+        } as ApiResponse);
+      }
+
+      res.json({ 
+        success: true, 
+        data: { id, result } 
+      } as ApiResponse);
+    }
+  );
+});
+
+// Скинути всі позиції
+positionsRouter.post('/reset', (req, res) => {
+  db.run('UPDATE positions SET result = ?', ['none'], (err) => {
+    if (err) {
+      console.error('❌ Помилка скидання позицій:', err);
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Помилка скидання позицій' 
+      } as ApiResponse);
     }
 
-    await database.updatePosition(positionId, result);
-
-    res.json({
-      success: true,
-      message: `Position ${positionId} updated to ${result}`
-    });
-  }));
-
-  // Reset all positions
-  router.post('/reset', asyncHandler(async (req, res) => {
-    await database.resetAllPositions();
-
-    res.json({
-      success: true,
-      message: 'All positions reset to none'
-    });
-  }));
-
-  return router;
-}
+    res.json({ 
+      success: true, 
+      data: { message: 'Всі позиції скинуті' } 
+    } as ApiResponse);
+  });
+});

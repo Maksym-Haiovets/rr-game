@@ -1,37 +1,29 @@
 {
-  "name": "trading-risk-game-ts-fixed",
-  "version": "1.0.0",
-  "description": "TypeScript Trading Risk Management Game with Fixed Database Initialization",
+  "name": "trading-risk-game-ts",
+  "version": "2.1.0",
+  "description": "Risk Management Game with TypeScript",
   "main": "dist/app.js",
   "scripts": {
-    "dev": "concurrently \"tsc --watch --project tsconfig.server.json\" \"nodemon dist/app.js\" \"webpack serve --config webpack.config.js\"",
+    "dev": "concurrently \"npm run build:server -- --watch\" \"npm run build:client -- --watch\" \"nodemon dist/app.js\"",
     "build": "npm run build:server && npm run build:client",
-    "build:server": "tsc --project tsconfig.server.json",
+    "build:server": "tsc -p tsconfig.server.json",
     "build:client": "webpack --mode=production",
     "start": "node dist/app.js",
-    "clean": "rimraf dist public/js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "clean": "rm -rf dist public/js"
   },
-  "keywords": ["trading", "risk-management", "typescript", "sqlite", "node"],
-  "author": "Trading Risk Game",
-  "license": "MIT",
   "dependencies": {
-    "cors": "^2.8.5",
     "express": "^4.18.2",
     "sqlite3": "^5.1.6"
   },
   "devDependencies": {
-    "@types/cors": "^2.8.13",
     "@types/express": "^4.17.17",
-    "@types/node": "^20.4.5",
+    "@types/node": "^20.5.0",
     "@types/sqlite3": "^3.1.8",
     "concurrently": "^8.2.0",
     "nodemon": "^3.0.1",
-    "rimraf": "^5.0.1",
     "ts-loader": "^9.4.4",
     "typescript": "^5.1.6",
     "webpack": "^5.88.2",
-    "webpack-cli": "^5.1.4",
-    "webpack-dev-server": "^4.15.1"
+    "webpack-cli": "^5.1.4"
   }
 }
