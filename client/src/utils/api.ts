@@ -1,46 +1,46 @@
-export async function get<T>(url: string): Promise<T> {
-    const response = await fetch(url);
-    const data = await response.json();
+export async function get(url: string): Promise<any> {
+  const response = await fetch(url);
+  const data = await response.json();
 
-    if (!data.success) {
-        throw new Error(data.error || 'API Error');
-    }
+  if (!data.success) {
+    throw new Error(data.error || 'API Error');
+  }
 
-    return data.data;
+  return data.data;
 }
 
-export async function post<T>(url: string, body: any): Promise<T> {
-    const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-    });
+export async function post(url: string, body: any): Promise<any> {
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
 
-    const data = await response.json();
+  const data = await response.json();
 
-    if (!data.success) {
-        throw new Error(data.error || 'API Error');
-    }
+  if (!data.success) {
+    throw new Error(data.error || 'API Error');
+  }
 
-    return data.data;
+  return data.data;
 }
 
-export async function put<T>(url: string, body: any): Promise<T> {
-    const response = await fetch(url, {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-    });
+export async function put(url: string, body: any): Promise<any> {
+  const response = await fetch(url, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
 
-    const data = await response.json();
+  const data = await response.json();
 
-    if (!data.success) {
-        throw new Error(data.error || 'API Error');
-    }
+  if (!data.success) {
+    throw new Error(data.error || 'API Error');
+  }
 
-    return data.data;
+  return data.data;
 }

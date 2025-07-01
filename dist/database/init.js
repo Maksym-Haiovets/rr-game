@@ -13,11 +13,11 @@ function initDatabase() {
         db.serialize(() => {
             // Створення таблиці позицій
             db.run(`
-                CREATE TABLE IF NOT EXISTS positions (
-                    id INTEGER PRIMARY KEY,
-                    result TEXT DEFAULT 'none' CHECK(result IN ('none', 'take', 'stop'))
-                )
-            `, (err) => {
+        CREATE TABLE IF NOT EXISTS positions (
+          id INTEGER PRIMARY KEY,
+          result TEXT DEFAULT 'none' CHECK(result IN ('none', 'take', 'stop'))
+        )
+      `, (err) => {
                 if (err) {
                     console.error('❌ Помилка створення таблиці positions:', err);
                     reject(err);
@@ -34,14 +34,14 @@ function initDatabase() {
             console.log('✅ Дефолтні позиції створені');
             // Створення таблиці налаштувань
             db.run(`
-                CREATE TABLE IF NOT EXISTS user_settings (
-                    id INTEGER PRIMARY KEY DEFAULT 1,
-                    risk_per_position REAL DEFAULT 1.0,
-                    reward_ratio REAL DEFAULT 2.0,
-                    tutorial_completed BOOLEAN DEFAULT 0,
-                    tutorial_skipped_forever BOOLEAN DEFAULT 0
-                )
-            `, (err) => {
+        CREATE TABLE IF NOT EXISTS user_settings (
+          id INTEGER PRIMARY KEY DEFAULT 1,
+          risk_per_position REAL DEFAULT 1.0,
+          reward_ratio REAL DEFAULT 2.0,
+          tutorial_completed BOOLEAN DEFAULT 0,
+          tutorial_skipped_forever BOOLEAN DEFAULT 0
+        )
+      `, (err) => {
                 if (err) {
                     console.error('❌ Помилка створення таблиці user_settings:', err);
                     reject(err);
@@ -51,9 +51,9 @@ function initDatabase() {
             });
             // Вставка дефолтних налаштувань
             db.run(`
-                INSERT OR IGNORE INTO user_settings (id, risk_per_position, reward_ratio, tutorial_completed, tutorial_skipped_forever)
-                VALUES (1, 1.0, 2.0, 0, 0)
-            `, (err) => {
+        INSERT OR IGNORE INTO user_settings (id, risk_per_position, reward_ratio, tutorial_completed, tutorial_skipped_forever)
+        VALUES (1, 1.0, 2.0, 0, 0)
+      `, (err) => {
                 if (err) {
                     console.error('❌ Помилка вставки дефолтних налаштувань:', err);
                 }
