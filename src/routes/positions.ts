@@ -1,80 +1,80 @@
-import { Router } from 'express';
-import { db } from '../app';
-import { Position, ApiResponse } from '../types/shared';
+import express from 'express';
+import { getDatabase } from '../database/init';
+import { Position } from '../types/shared';
 
-export const positionsRouter = Router();
+const router = express.Router();
 
-// Отримати всі позиції
-positionsRouter.get('/', (req, res) => {
-  db.all('SELECT * FROM positions ORDER BY id', (err, rows: Position[]) => {
-    if (err) {
-      console.error('❌ Помилка отримання позицій:', err);
-      return res.status(500).json({ 
-        success: false, 
-        error: 'Помилка отримання позицій' 
-      } as ApiResponse);
-    }
+// GET /api/positions - Get all positions
+router.get('/', async (req, res) => {
+  try {
+    const db = await getDatabase();
 
-    res.json({ 
-      success: true, 
-      data: rows 
-    } as ApiResponse);
-  });
-});
-
-// Оновити позицію
-positionsRouter.put('/:id', (req, res) => {
-  const id = parseInt(req.params.id);
-  const { result } = req.body;
-
-  if (!['none', 'take', 'stop'].includes(result)) {
-    return res.status(400).json({ 
-      success: false, 
-      error: 'Некоректне значення result' 
-    } as ApiResponse);
-  }
-
-  if (id < 1 || id > 15) {
-    return res.status(400).json({ 
-      success: false, 
-      error: 'ID позиції має бути від 1 до 15' 
-    } as ApiResponse);
-  }
-
-  db.run(
-    'UPDATE positions SET result = ? WHERE id = ?',
-    [result, id],
-    function(err) {
+    db.all("SELECT id, result FROM positions ORDER BY id", (err, rows: Position[]) => {
       if (err) {
-        console.error('❌ Помилка оновлення позиції:', err);
-        return res.status(500).json({ 
-          success: false, 
-          error: 'Помилка оновлення позиції' 
-        } as ApiResponse);
+        console.error('Database error:', err);
+        res.status(500).json({ error: 'Помилка бази даних' });
+      } else {
+        res.json(rows);
       }
-
-      res.json({ 
-        success: true, 
-        data: { id, result } 
-      } as ApiResponse);
-    }
-  );
+      db.close();
+    });
+  } catch (error) {
+    console.error('Server error:', error);
+    res.status(500).json({ error: 'Помилка сервера' });
+  }
 });
 
-// Скинути всі позиції
-positionsRouter.post('/reset', (req, res) => {
-  db.run('UPDATE positions SET result = ?', ['none'], (err) => {
-    if (err) {
-      console.error('❌ Помилка скидання позицій:', err);
-      return res.status(500).json({ 
-        success: false, 
-        error: 'Помилка скидання позицій' 
-      } as ApiResponse);
+// PUT /api/positions/:id - Update position result
+router.put('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { result } = req.body;
+
+    if (!['none', 'take', 'stop'].includes(result)) {
+      return res.status(400).json({ error: 'Недійсний результат позиції' });
     }
 
-    res.json({ 
-      success: true, 
-      data: { message: 'Всі позиції скинуті' } 
-    } as ApiResponse);
-  });
+    const db = await getDatabase();
+
+    db.run(
+      "UPDATE positions SET result = ? WHERE id = ?",
+      [result, id],
+      function(err) {
+        if (err) {
+          console.error('Database error:', err);
+          res.status(500).json({ error: 'Помилка оновлення позиції' });
+        } else if (this.changes === 0) {
+          res.status(404).json({ error: 'Позицію не знайдено' });
+        } else {
+          res.json({ success: true, id: parseInt(id), result });
+        }
+        db.close();
+      }
+    );
+  } catch (error) {
+    console.error('Server error:', error);
+    res.status(500).json({ error: 'Помилка сервера' });
+  }
 });
+
+// POST /api/positions/reset - Reset all positions to 'none'
+router.post('/reset', async (req, res) => {
+  try {
+    const db = await getDatabase();
+
+    db.run("UPDATE positions SET result = 'none'", (err) => {
+      if (err) {
+        console.error('Database error:', err);
+        res.status(500).json({ error: 'Помилка скидання позицій' });
+      } else {
+        res.json({ success: true, message: 'Всі позиції скинуті' });
+      }
+      db.close();
+    });
+  } catch (error) {
+    console.error('Server error:', error);
+    res.status(500).json({ error: 'Помилка сервера' });
+  }
+});
+
+export default router;

@@ -1,5 +1,5 @@
 export function showToast(message: string, type: 'success' | 'error' = 'success') {
-  const container = document.getElementById('toast-container')!;
+  const container = document.getElementById('toast-container') || createToastContainer();
 
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
@@ -7,9 +7,9 @@ export function showToast(message: string, type: 'success' | 'error' = 'success'
 
   container.appendChild(toast);
 
-  // Автоматичне видалення через 3 секунди
+  // Auto remove after 3 seconds
   setTimeout(() => {
-    toast.style.animation = 'toastSlideOut 0.3s ease';
+    toast.style.animation = 'toastSlideOut 0.3s ease forwards';
     setTimeout(() => {
       if (toast.parentNode) {
         toast.parentNode.removeChild(toast);
@@ -18,21 +18,10 @@ export function showToast(message: string, type: 'success' | 'error' = 'success'
   }, 3000);
 }
 
-// Додаємо стилі для анімації виходу
-if (!document.getElementById('toast-animation-styles')) {
-  const style = document.createElement('style');
-  style.id = 'toast-animation-styles';
-  style.textContent = `
-    @keyframes toastSlideOut {
-      from {
-        transform: translateX(0);
-        opacity: 1;
-      }
-      to {
-        transform: translateX(100%);
-        opacity: 0;
-      }
-    }
-  `;
-  document.head.appendChild(style);
+function createToastContainer(): HTMLElement {
+  const container = document.createElement('div');
+  container.id = 'toast-container';
+  container.className = 'toast-container';
+  document.body.appendChild(container);
+  return container;
 }

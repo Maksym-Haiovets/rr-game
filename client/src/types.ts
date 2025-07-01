@@ -1,24 +1,34 @@
-import { Position, UserSettings } from '../../src/types/shared';
+export interface Position {
+  id: number;
+  result: 'none' | 'take' | 'stop';
+}
 
-export { Position, UserSettings };
+export interface UserSettings {
+  id: number;
+  risk_per_position: number;
+  reward_ratio: number;
+  tutorial_completed: boolean;
+  tutorial_skipped_forever: boolean;
+}
+
+export interface GameStats {
+  takes: number;
+  stops: number;
+  profit: number;
+  winRate: number;
+}
 
 export interface GameState {
   positions: Position[];
   settings: UserSettings;
-  stats: {
-    takes: number;
-    stops: number;
-    profit: number;
-    winRate: number;
-  };
+  stats: GameStats;
 }
 
 export interface ProfitGrade {
-  label: string;
-  profitPct: number;
-  takes: number;
-  stops: number;
-  winRate: number;
-  className: string;
-  description: string;
+  id: string;
+  title: string;
+  minProfit: number;
+  minWinRate: number;
+  color: string;
+  emoji: string;
 }

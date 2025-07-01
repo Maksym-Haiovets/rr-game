@@ -6,10 +6,14 @@ module.exports = {
     rules: [
       {
         test: /\.tsx?$/,
-        use: [{
-          loader: 'ts-loader',
-          options: { configFile: 'tsconfig.client.json' }
-        }],
+        use: [
+          {
+            loader: 'ts-loader',
+            options: {
+              configFile: 'tsconfig.client.json'
+            }
+          }
+        ],
         exclude: /node_modules/,
       },
     ],
@@ -19,7 +23,9 @@ module.exports = {
   },
   output: {
     filename: 'bundle.js',
-    path: path.resolve(__dirname, 'public', 'js'),
+    path: path.resolve(__dirname, 'public/js'),
+    clean: true,
   },
-  devtool: 'source-map'
+  devtool: 'source-map',
+  mode: 'development'
 };

@@ -9,8 +9,3 @@ export interface UserSettings {
     tutorial_completed: boolean;
     tutorial_skipped_forever: boolean;
 }
-export interface ApiResponse<T = any> {
-    success: boolean;
-    data?: T;
-    error?: string;
-}

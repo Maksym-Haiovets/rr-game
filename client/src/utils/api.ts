@@ -1,46 +1,37 @@
-export async function get(url: string): Promise<any> {
-  const response = await fetch(url);
-  const data = await response.json();
+const API_BASE = '';
 
-  if (!data.success) {
-    throw new Error(data.error || 'API Error');
+export async function get(endpoint: string) {
+  const response = await fetch(`${API_BASE}${endpoint}`);
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
   }
-
-  return data.data;
+  return response.json();
 }
 
-export async function post(url: string, body: any): Promise<any> {
-  const response = await fetch(url, {
+export async function post(endpoint: string, data: any) {
+  const response = await fetch(`${API_BASE}${endpoint}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify(data),
   });
-
-  const data = await response.json();
-
-  if (!data.success) {
-    throw new Error(data.error || 'API Error');
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
   }
-
-  return data.data;
+  return response.json();
 }
 
-export async function put(url: string, body: any): Promise<any> {
-  const response = await fetch(url, {
+export async function put(endpoint: string, data: any) {
+  const response = await fetch(`${API_BASE}${endpoint}`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify(data),
   });
-
-  const data = await response.json();
-
-  if (!data.success) {
-    throw new Error(data.error || 'API Error');
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
   }
-
-  return data.data;
+  return response.json();
 }

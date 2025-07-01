@@ -1,110 +1,93 @@
 import { ProfitGrade } from '../types';
 
-export const PROFIT_GRADES: ProfitGrade[] = [
-  { 
-    label: 'Беззбитковість', 
-    profitPct: 0, 
-    takes: 5, 
-    stops: 10, 
-    winRate: 33.3,
-    className: 'grade-breakeven',
-    description: '5 тейків + 10 стопів = 0% прибутку'
+const PROFIT_GRADES: ProfitGrade[] = [
+  {
+    id: 'breakeven',
+    title: 'Беззбиткові',
+    minProfit: 0,
+    minWinRate: 33.3,
+    color: '#ffd93d',
+    emoji: '⚖️'
   },
-  { 
-    label: 'Легкий прибуток', 
-    profitPct: 3, 
-    takes: 6, 
-    stops: 9, 
-    winRate: 40,
-    className: 'grade-light',
-    description: '6 тейків + 9 стопів = 3% прибутку'
+  {
+    id: 'light',
+    title: 'Легкий прибуток',
+    minProfit: 5,
+    minWinRate: 40,
+    color: '#06d6a0',
+    emoji: '🌱'
   },
-  { 
-    label: 'Хороший прибуток', 
-    profitPct: 6, 
-    takes: 7, 
-    stops: 8, 
-    winRate: 46.7,
-    className: 'grade-good',
-    description: '7 тейків + 8 стопів = 6% прибутку'
+  {
+    id: 'good',
+    title: 'Хороший прибуток',
+    minProfit: 15,
+    minWinRate: 45,
+    color: '#10b981',
+    emoji: '💚'
   },
-  { 
-    label: 'Відмінний прибуток', 
-    profitPct: 9, 
-    takes: 8, 
-    stops: 7, 
-    winRate: 53.3,
-    className: 'grade-excellent',
-    description: '8 тейків + 7 стопів = 9% прибутку'
+  {
+    id: 'excellent',
+    title: 'Відмінний прибуток',
+    minProfit: 30,
+    minWinRate: 50,
+    color: '#8b5cf6',
+    emoji: '💎'
   },
-  { 
-    label: 'Чудовий прибуток', 
-    profitPct: 12, 
-    takes: 9, 
-    stops: 6, 
-    winRate: 60,
-    className: 'grade-amazing',
-    description: '9 тейків + 6 стопів = 12% прибутку'
+  {
+    id: 'amazing',
+    title: 'Неймовірний прибуток',
+    minProfit: 50,
+    minWinRate: 60,
+    color: '#f59e0b',
+    emoji: '🚀'
   }
 ];
 
-export function getCurrentGrade(takes: number, stops: number, profit: number): ProfitGrade | null {
-  // Якщо немає точного співпадіння, знаходимо найближчу нижню градацію за кількістю тейків
-  const currentGrade = PROFIT_GRADES.reverse().find((grade) => takes >= grade.takes);
-
-  if(!currentGrade){
-    return null;
-  }
-
-  return currentGrade;
-}
-
 export function updateProfitGradeDisplay(takes: number, stops: number, profit: number) {
   const container = document.getElementById('profit-grades-list')!;
-  const currentLevelElement = document.getElementById('current-level')!;
+  const currentLevelDisplay = document.getElementById('current-level-display')!;
 
   container.innerHTML = '';
 
-  const currentGrade = getCurrentGrade(takes, stops, profit);
+  const totalPositions = takes + stops;
+  const winRate = totalPositions > 0 ? (takes / totalPositions) * 100 : 0;
+
+  let currentGrade: ProfitGrade | null = null;
 
   PROFIT_GRADES.forEach(grade => {
-    const gradeElement = document.createElement('div');
-    gradeElement.className = `profit-grade-item ${grade.className}`;
+    const item = document.createElement('div');
+    item.className = 'profit-grade-item';
 
-    // Визначаємо чи досягнуто цей рівень
-    const isAchieved = profit >= grade.profitPct;
-    const isCurrent = currentGrade && currentGrade.profitPct === grade.profitPct;
+    const achieved = profit >= grade.minProfit && winRate >= grade.minWinRate;
+    const isCurrent = !currentGrade && profit >= grade.minProfit && winRate >= grade.minWinRate;
 
-    if (isAchieved) {
-      gradeElement.classList.add('achieved');
+    if (achieved) {
+      item.classList.add('achieved');
+      currentGrade = grade;
     }
 
     if (isCurrent) {
-      gradeElement.classList.add('current');
+      item.classList.add('current');
     }
 
-    gradeElement.innerHTML = `
+    item.innerHTML = `
       <div class="grade-header">
-        <span class="grade-title">${grade.label}</span>
-        <span class="grade-percentage">${grade.profitPct}%</span>
+        <span class="grade-title">${grade.emoji} ${grade.title}</span>
+        <span class="grade-percentage">${grade.minProfit}%+</span>
       </div>
-      <div class="grade-requirement">${grade.description}</div>
-      <div class="grade-winrate">Потрібний win-rate: ${grade.winRate}%</div>
+      <div class="grade-requirement">Мінімум ${grade.minProfit}% прибутку</div>
+      <div class="grade-winrate">Win-rate: ${grade.minWinRate}%+</div>
     `;
 
-    container.appendChild(gradeElement);
+    container.appendChild(item);
   });
 
-  // Оновлюємо поточний рівень
+  // Update current level display
   if (currentGrade) {
-    currentLevelElement.innerHTML = `
-      Поточний рівень: ${currentGrade.label}
-    `;
-    currentLevelElement.className = `current-level-display ${currentGrade.className}`;
+    currentLevelDisplay.textContent = `Поточний рівень: ${currentGrade.title}`;
+    currentLevelDisplay.className = `current-level-display grade-${currentGrade.id}`;
   } else {
-    currentLevelElement.innerHTML = `
-      Поточний рівень: Початковий рівень
-    `;
-    currentLevelElement.className = 'current-level-display initial';
+    currentLevelDisplay.textContent = 'Поточний рівень: Початковий рівень';
+    currentLevelDisplay.className = 'current-level-display initial';
   }
 }
