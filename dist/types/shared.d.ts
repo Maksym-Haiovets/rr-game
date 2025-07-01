@@ -9,12 +9,6 @@ export interface UserSettings {
     tutorial_completed: boolean;
     tutorial_skipped_forever: boolean;
 }
-export interface Achievement {
-    id: number;
-    code: string;
-    unlocked: boolean;
-    unlocked_at?: string;
-}
 export interface ApiResponse<T = any> {
     success: boolean;
     data?: T;

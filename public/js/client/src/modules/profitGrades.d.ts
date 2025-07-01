@@ -1,5 +1,4 @@
 import { ProfitGrade } from '../types';
 export declare const PROFIT_GRADES: ProfitGrade[];
-export declare function detectGrade(takes: number, stops: number): ProfitGrade | null;
-export declare function getGradeByProfit(profitPct: number): ProfitGrade | null;
-export declare function updateGradeDisplay(takes: number, stops: number, profitPct: number): void;
+export declare function getCurrentGrade(takes: number, stops: number, profit: number): ProfitGrade | null;
+export declare function updateProfitGradeDisplay(takes: number, stops: number, profit: number): void;

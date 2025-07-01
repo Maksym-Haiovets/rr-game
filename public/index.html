@@ -10,6 +10,7 @@
     <div class="container">
         <h1>🎯 Гра Ризик-Менеджменту</h1>
 
+        <!-- Статистика -->
         <div class="stats-panel">
             <div class="stat-item">
                 <span class="stat-label">Тейки:</span>
@@ -29,15 +30,12 @@
             </div>
         </div>
 
-        <div class="grade-panel">
-            <div class="grade-badge" id="grade-badge">—</div>
-            <div class="grade-description" id="grade-description">Почніть торгувати!</div>
-        </div>
-
+        <!-- Сітка позицій -->
         <div class="positions-grid" id="positions-grid">
             <!-- Позиції будуть створені динамічно -->
         </div>
 
+        <!-- Налаштування -->
         <div class="controls-panel">
             <div class="settings-group">
                 <label>
@@ -48,41 +46,46 @@
                     Співвідношення прибутку (RR):
                     <input type="number" id="reward-input" min="1" max="5" step="0.1" value="2.0">
                 </label>
-                <button id="save-settings">Зберегти налаштування</button>
             </div>
 
             <div class="action-buttons">
-                <button id="reset-positions">Скинути всі позиції</button>
-                <button id="show-guide-btn">Показати гайд</button>
+                <button id="save-settings">💾 Зберегти налаштування</button>
+                <button id="reset-positions">🔄 Скинути позиції</button>
+                <button id="show-guide-btn">📖 Показати гайд</button>
             </div>
         </div>
 
-        <div class="achievements-panel" id="achievements-panel">
-            <h3>🏆 Досягнення</h3>
-            <div class="achievements-list" id="achievements-list">
-                <!-- Досягнення будуть створені динамічно -->
+        <!-- Градації прибутку (замість досягнень) -->
+        <div class="profit-grades-panel">
+            <h3>📊 Градації прибутку</h3>
+            <div class="profit-grades-list" id="profit-grades-list">
+                <!-- Градації будуть створені динамічно -->
+            </div>
+            <div class="current-level-display" id="current-level">
+                <div class="current-level-title">Поточний рівень: Початковий рівень</div>
             </div>
         </div>
 
+        <!-- Мотиваційне повідомлення -->
         <div class="motivation-message" id="motivation-msg">
             Почніть торгувати, щоб побачити результати!
         </div>
     </div>
 
-    <!-- Модальні вікна туторіалу -->
-    <div id="tutorial-modal" class="modal">
+    <!-- Модальні вікна -->
+    <div class="modal" id="tutorial-modal">
         <div class="modal-content">
             <h2>🎓 Навчальний гайд</h2>
             <p>Хочете пройти швидкий туторіал по грі?</p>
             <div class="modal-buttons">
-                <button id="start-tutorial">Розпочати гайд</button>
-                <button id="skip-tutorial">Пропустити</button>
-                <button id="skip-forever">Не показувати більше</button>
+                <button id="start-tutorial">📚 Почати гайд</button>
+                <button id="skip-tutorial">⏭️ Пропустити</button>
+                <button id="skip-forever">🚫 Не показувати більше</button>
             </div>
         </div>
     </div>
 
-    <!-- Toast повідомлення -->
+    <!-- Контейнер для toast повідомлень -->
     <div id="toast-container"></div>
 
     <script src="js/bundle.js"></script>
