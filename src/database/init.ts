@@ -39,7 +39,7 @@ export async function initDatabase() {
         )
       `);
 
-      // Initialize 100 positions if they don't exist
+      // Initialize 15 positions if they don't exist
       db.get("SELECT COUNT(*) as count FROM positions", (err, row: any) => {
         if (err) {
           reject(err);
@@ -48,7 +48,7 @@ export async function initDatabase() {
 
         if (row.count === 0) {
           const stmt = db.prepare("INSERT INTO positions (id, result) VALUES (?, 'none')");
-          for (let i = 1; i <= 100; i++) {
+          for (let i = 1; i <= 15; i++) {
             stmt.run(i);
           }
           stmt.finalize();
