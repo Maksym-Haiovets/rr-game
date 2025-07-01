@@ -1,9 +1,8 @@
-import { Position, UserSettings, Achievement } from '../../src/types/shared';
-export { Position, UserSettings, Achievement };
+import { Position, UserSettings } from '../../src/types/shared';
+export { Position, UserSettings };
 export interface GameState {
     positions: Position[];
     settings: UserSettings;
-    achievements: Achievement[];
     stats: {
         takes: number;
         stops: number;
@@ -18,4 +17,5 @@ export interface ProfitGrade {
     stops: number;
     winRate: number;
     className: string;
+    description: string;
 }

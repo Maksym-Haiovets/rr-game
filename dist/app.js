@@ -9,7 +9,6 @@ const path_1 = __importDefault(require("path"));
 const init_1 = require("./database/init");
 const positions_1 = require("./routes/positions");
 const settings_1 = require("./routes/settings");
-const achievements_1 = require("./routes/achievements");
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 3000;
 // Middleware
@@ -23,7 +22,6 @@ async function startServer() {
         // Маршрути API
         app.use('/api/positions', positions_1.positionsRouter);
         app.use('/api/settings', settings_1.settingsRouter);
-        app.use('/api/achievements', achievements_1.achievementsRouter);
         // Обробка помилок
         app.use((err, req, res, next) => {
             console.error('❌ Помилка сервера:', err);
