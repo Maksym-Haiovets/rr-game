@@ -49,20 +49,14 @@ export const PROFIT_GRADES: ProfitGrade[] = [
 ];
 
 export function getCurrentGrade(takes: number, stops: number, profit: number): ProfitGrade | null {
-  // Спочатку перевіряємо точні комбінації
-  const exactMatch = PROFIT_GRADES.find(g => g.takes === takes && g.stops === stops);
-  if (exactMatch) {
-    return exactMatch;
+  // Якщо немає точного співпадіння, знаходимо найближчу нижню градацію за кількістю тейків
+  const currentGrade = PROFIT_GRADES.reverse().find((grade) => takes >= grade.takes);
+
+  if(!currentGrade){
+    return null;
   }
 
-  // Якщо немає точного співпадіння, знаходимо найближчу нижню градацію за прибутком
-  for (let i = PROFIT_GRADES.length - 1; i >= 0; i--) {
-    if (profit >= PROFIT_GRADES[i].profitPct) {
-      return PROFIT_GRADES[i];
-    }
-  }
-
-  return null;
+  return currentGrade;
 }
 
 export function updateProfitGradeDisplay(takes: number, stops: number, profit: number) {
