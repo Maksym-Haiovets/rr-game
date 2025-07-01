@@ -27,11 +27,8 @@ export interface GameState {
 export interface ProfitGrade {
   id: string;
   title: string;
-  description: string;
   minProfit: number;
   minWinRate: number;
   color: string;
   emoji: string;
-  takes: number;
-  stops: number;
 }
